@@ -1,0 +1,434 @@
+/* ---------- Global Styles ---------- */
+body {
+  margin: 0;
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 18px;
+  background-color: #fdfdfd; /* Elegant off-white background */
+  color: #333;
+  transition: background 0.5s ease;
+}
+
+/* ---------- Loader Animation ---------- */
+#loading-screen {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+#loading-screen img {
+  width: 300px;
+  animation: slideUp 2s ease-out forwards;
+}
+@keyframes slideUp {
+  0% { transform: translateY(100%); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0; }
+}
+
+/* ---------- Header & Navigation ---------- */
+header {
+  background: #f8c1c1;
+  padding: 15px 20px;
+  text-align: center;
+  position: relative;
+}
+header h1 {
+  margin: 0;
+  font-size: 2.5em;
+  color: #dc143c;
+}
+
+/* Home Icon on Top-Left */
+#home-icon {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  cursor: pointer;
+}
+.home-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+/* Navigation Menu */
+nav {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+nav a {
+  background: #fff;
+  color: #dc143c;
+  text-decoration: none;
+  padding: 10px 15px;
+  border: 2px solid #dc143c;
+  border-radius: 20px;
+  font-size: 1.2em;
+  transition: background 0.3s, transform 0.2s;
+}
+nav a:hover {
+  background: #ffb6c1;
+  transform: scale(1.05);
+}
+
+/* ---------- Profile Dropdown (Top-Right) ---------- */
+#profile-dropdown {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+}
+.profile-btn {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  background: transparent;
+  position: relative;
+}
+#profile-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #dc143c;
+  transition: transform 0.3s ease;
+}
+.profile-btn:hover #profile-avatar {
+  transform: scale(1.1);
+}
+.profile-label {
+  position: absolute;
+  bottom: -18px;
+  width: 100%;
+  text-align: center;
+  font-size: 0.9em;
+  color: #dc143c;
+  font-weight: bold;
+}
+#profile-menu {
+  display: none;
+  position: absolute;
+  top: 55px;
+  right: 0;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  min-width: 150px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  animation: slideDown 0.3s ease-out;
+}
+#profile-menu.active {
+  display: block;
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+#profile-menu a {
+  display: block;
+  padding: 10px;
+  color: #333;
+  text-decoration: none;
+  border-bottom: 1px solid #eee;
+}
+#profile-menu a:hover {
+  background: #f2f2f2;
+}
+#logout-link {
+  margin-top: 10px;
+  text-align: center;
+  color: #dc143c;
+  font-weight: bold;
+}
+
+/* ---------- Progress Bar (Left Center) ---------- */
+#progress-bar {
+  position: fixed;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 60%;
+  background: #eee;
+  border-radius: 0 5px 5px 0;
+  z-index: 100;
+}
+#progress-fill {
+  width: 100%;
+  height: 0; /* Update dynamically with JS if desired */
+  background: #4CAF50;
+  border-radius: 0 5px 5px 0;
+  transition: height 0.3s ease;
+}
+
+/* ---------- Sections ---------- */
+.section {
+  display: none;
+  max-width: 900px;
+  margin: 30px auto;
+  background: #fff;
+  color: #333;
+  padding: 35px;
+  border-radius: 10px;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+  animation: fadeIn 0.8s ease;
+}
+.section.active {
+  display: block;
+}
+.section h2 {
+  color: #dc143c;
+  font-size: 2em;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Form Elements ---------- */
+input, textarea, button, select {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  font-size: 1em;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+textarea {
+  resize: vertical;
+  min-height: 35px;
+  min-width: 120px;
+}
+button {
+  background: #dc143c;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+button:hover {
+  background: #c1122b;
+  transform: scale(1.05);
+}
+.secondary-button {
+  background: #fff;
+  border: 2px solid #dc143c;
+  color: #dc143c;
+}
+.small-note {
+  font-size: 0.9em;
+  color: #888;
+}
+
+/* ---------- Profile Section Specific ---------- */
+#profile-info {
+  margin-top: 15px;
+}
+
+/* ---------- Quiz & Exam Containers ---------- */
+.question-item {
+  margin-bottom: 15px;
+}
+.quiz-option, .final-exam-option {
+  display: inline-block;
+  border: 2px solid #dc143c;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 5px;
+  cursor: pointer;
+  transition: background 0.3s;
+  text-align: center;
+  font-weight: 500;
+}
+.quiz-option:hover, .final-exam-option:hover {
+  background: #ffb6c1;
+}
+.selected {
+  background-color: #ffe4e1;
+  border-color: #c1122b;
+  font-weight: bold;
+}
+
+/* ---------- Learning Path Section ---------- */
+.learning-path-result {
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 10px;
+  text-align: left;
+  line-height: 1.6;
+  border: 2px solid #dc143c;
+  color: #333;
+}
+
+/* ---------- Final Exam Timer ---------- */
+#exam-timer {
+  font-size: 1.2em;
+  font-weight: 700;
+  margin-left: 10px;
+}
+
+/* ---------- Chat Bot Panel ---------- */
+.bot-panel {
+  background: #fff;
+  color: #333;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 15px;
+  border: 2px solid #dc143c;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+.chat-box {
+  background: #fff;
+  color: #333;
+  padding: 10px;
+  flex: 1;
+  overflow-y: auto;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border: 2px solid #dc143c;
+}
+.chat-message {
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+.chat-message.user-message {
+  background: #ffebef;
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #dc143c;
+}
+.chat-message.bot-message {
+  background: #ffe4e1;
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #dc143c;
+}
+.chat-input-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.chat-input {
+  flex: 1;
+  padding: 15px; /* Increased padding for larger typing area */
+  font-size: 1em;
+  min-width: 200px; /* Increased width */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 50px; /* Increased height */
+}
+.chat-send-btn, .chat-mic-btn {
+  background: #dc143c;
+  border: none;
+  border-radius: 4px;
+  width: 50px; /* Square button */
+  height: 50px; /* Square button */
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.chat-send-btn:hover, .chat-mic-btn:hover {
+  background: #c1122b;
+  transform: scale(1.05);
+}
+.chat-send-btn svg, .chat-mic-btn svg {
+  width: 20px; /* Larger icons */
+  height: 20px;
+}
+.chat-buttons {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ---------- Centered Pie Chart Container (Capacity Test Only) ---------- */
+#chartContainer {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+  height: 300px;
+  background: #fff;
+  border: 3px solid #dc143c;
+  border-radius: 10px;
+  padding: 10px;
+  z-index: 1200;
+  display: none;
+}
+
+/* ---------- History Section ---------- */
+#history-container ul {
+  list-style-type: disc;
+  padding-left: 20px;
+  color: #333;
+}
+
+/* ---------- Leaderboard & Personal Notes Sections ---------- */
+#leaderboard-section,
+#notes-section {
+  background: #fff;
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 35px;
+  border-radius: 10px;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+  color: #333;
+}
+#leaderboard-section h2,
+#notes-section h2 {
+  color: #dc143c;
+}
+
+/* ---------- Responsive Media Queries ---------- */
+@media (max-width: 768px) {
+  header h1 {
+    font-size: 1.8em;
+  }
+  nav a {
+    font-size: 1em;
+    padding: 8px 12px;
+  }
+  .section {
+    padding: 20px;
+    margin: 15px;
+  }
+  #profile-avatar, .home-img {
+    width: 35px;
+    height: 35px;
+  }
+  .chat-input {
+    min-width: 180px;
+  }
+}
+
+/* ---------- Tutor Bot Image ---------- */
+#tutor-bot {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  animation: pulse 3s infinite;
+  cursor: pointer;
+  z-index: 100;
+}
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}

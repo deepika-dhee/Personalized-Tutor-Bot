@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Personalized Tutor Bot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  
+  <!-- Chart.js for dynamic charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Tippy.js for tooltips -->
+  <script src="https://unpkg.com/@popperjs/core@2"></script>
+  <script src="https://unpkg.com/tippy.js@6"></script>
+  <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css"/>
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
+  
+  <script>
+    // Initialize tooltips and register outside-click to close profile dropdown
+    document.addEventListener("DOMContentLoaded", () => {
+      tippy('[data-tippy-content]', { animation: 'scale' });
+      document.addEventListener("click", (event) => {
+        const pd = document.getElementById("profile-dropdown");
+        const menu = document.getElementById("profile-menu");
+        if (!pd.contains(event.target)) {
+          menu.classList.remove("active");
+        }
+      });
+    });
+    window.addEventListener("load", () => {
+      document.getElementById("loading-screen").style.display = "none";
+    });
+    
+    // Toggle password visibility
+    function togglePassword() {
+      const passField = document.getElementById("password") || document.getElementById("signup-password");
+      const toggleIcon = document.getElementById("togglePassIcon") || document.getElementById("signup-togglePassIcon");
+      if(passField.type === "password"){
+        passField.type = "text";
+        toggleIcon.innerText = "🙈";
+      } else {
+        passField.type = "password";
+        toggleIcon.innerText = "👁️";
+      }
+    }
+    
+    // Show a section
+    function showSection(id) {
+      document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+    }
+    
+    /* ---------------- Authentication ---------------- */
+    async function signupUser() {
+      const username = document.getElementById("signup-username").value.trim();
+      const password = document.getElementById("signup-password").value.trim();
+      const res = await fetch("/signup", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      document.getElementById("signup-msg").innerText = data.message;
+      if(data.success) { showSection("profile-section"); }
+    }
+    
+    async function login() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const res = await fetch("/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if(data.success) {
+         document.getElementById("login-msg").innerText = "Login Successful!";
+         showSection("dashboard-section");
+      } else {
+         document.getElementById("login-msg").innerText = "Login failed. Please try again.";
+      }
+    }
+    
+    async function logout() {
+      await fetch("/logout", { method: "POST" });
+      location.reload();
+    }
+    
+    /* ---------------- Profile & Personalization ---------------- */
+    async function updateProfile() {
+      const type = document.getElementById("profile-type").value;
+      let level = "";
+      let grade = "";
+      let stream = "";
+      let field = "";
+      let otherText = "";
+      if(type === "student") {
+         level = document.getElementById("profile-level-select").value;
+         if(level === "school") {
+            grade = document.getElementById("profile-grade").value;
+         } else if(level === "college") {
+            stream = document.getElementById("profile-stream").value;
+         } else if(level === "graduated") {
+            otherText = document.getElementById("profile-degree").value;
+         }
+      } else if(type === "professional") {
+         field = document.getElementById("profile-field").value;
+      } else if(type === "other") {
+         otherText = document.getElementById("profile-other").value;
+      }
+      const profile = { type, level, grade, stream, field, other: otherText };
+      const res = await fetch("/update_profile", {
+         method: "POST",
+         headers: {"Content-Type": "application/json"},
+         body: JSON.stringify(profile)
+      });
+      const data = await res.json();
+      alert(data.message);
+    }
+    
+    async function loadProfile() {
+      const res = await fetch("/get_profile");
+      const data = await res.json();
+      document.getElementById("profile-info").innerHTML = data.profile;
+    }
+    
+    /* ---------------- Capacity Test ---------------- */
+    async function startCapacityTest() {
+      document.getElementById("capacity-test-questions").innerHTML = "<p>Your personalized quizzes are generating…</p>";
+      await loadCapacityTestQuestions();
+      document.getElementById("start-capacity-btn").style.display = "none";
+      document.getElementById("capacity-test-form").style.display = "block";
+    }
+    
+    async function loadCapacityTestQuestions() {
+      const res = await fetch("/get_capacity_test");
+      const data = await res.json();
+      let container = document.getElementById("capacity-test-questions");
+      container.innerHTML = "";
+      data.questions.forEach((q, i) => {
+         let questionHTML = `<div class="question-item">
+            <label><strong>${i+1}. ${q.question}</strong></label>`;
+         if(q.type.toLowerCase().includes("mcq") || q.type.toLowerCase().includes("multiple")){
+            let optionsHTML = "";
+            let opts = q.options || q.choices;
+            if(Array.isArray(opts)){
+               optionsHTML = opts.map(opt => {
+                  return `<label class="quiz-option" data-tippy-content="Click to select">
+                            <input type="radio" name="q${i+1}" value="${opt}" style="display:none;">
+                            <span>${opt}</span>
+                          </label>`;
+               }).join("");
+            } else if(typeof opts === "object"){
+               optionsHTML = Object.values(opts).map(opt => {
+                  return `<label class="quiz-option" data-tippy-content="Click to select">
+                            <input type="radio" name="q${i+1}" value="${opt}" style="display:none;">
+                            <span>${opt}</span>
+                          </label>`;
+               }).join("");
+            }
+            questionHTML += `<div>${optionsHTML}</div>`;
+         } else {
+            questionHTML += `<input type="text" name="q${i+1}" placeholder="Your answer" required>`;
+         }
+         questionHTML += `</div>`;
+         container.innerHTML += questionHTML;
+      });
+      Array.from(document.querySelectorAll(".quiz-option")).forEach(option => {
+         option.addEventListener("click", function(){
+            const radio = this.querySelector("input[type='radio']");
+            if(!radio) return;
+            radio.checked = true;
+            const groupName = radio.name;
+            Array.from(document.getElementsByName(groupName)).forEach(input => {
+               input.parentElement.classList.remove("selected");
+            });
+            this.classList.add("selected");
+         });
+      });
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("capacity-test-form").addEventListener("submit", async (e) => {
+         e.preventDefault();
+         const formData = new FormData(document.getElementById("capacity-test-form"));
+         const answers = {};
+         formData.forEach((val, key) => { answers[key] = val; });
+         const res = await fetch("/submit_capacity_test", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(answers)
+         });
+         const data = await res.json();
+         let feedbackHTML = `<p>Your score: ${data.score} (${data.category})</p>`;
+         if(data.details){
+            feedbackHTML += `<table border="1" cellspacing="0" cellpadding="5">
+                              <tr>
+                                <th>Question</th>
+                                <th>Your Answer</th>
+                                <th>Correct Answer</th>
+                                <th>Result</th>
+                              </tr>`;
+            data.details.forEach(item => {
+               feedbackHTML += `<tr>
+                                 <td>${item.question}</td>
+                                 <td>${item.user_answer}</td>
+                                 <td>${item.correct_answer}</td>
+                                 <td>${item.result}</td>
+                               </tr>`;
+            });
+            feedbackHTML += `</table>`;
+         }
+         document.getElementById("chartContainer").style.display = "block";
+         feedbackHTML += `<button onclick="showSection('goal-section')">Continue to Goal Selection</button>
+                          <button onclick="retakeCapacityTest()">Retake Capacity Test</button>`;
+         document.getElementById("capacity-test-msg").innerHTML = feedbackHTML;
+         
+         const corr = data.details.filter(item => item.result.includes("✅")).length;
+         const wrong = data.details.filter(item => item.result.includes("❌")).length;
+         const unanswered = data.details.filter(item => item.user_answer === "(not answered)").length;
+         const ctx = document.getElementById("capacityChart").getContext("2d");
+         new Chart(ctx, {
+            type: "pie",
+            data: {
+               labels: ["Correct", "Wrong", "Unanswered"],
+               datasets: [{ data: [corr, wrong, unanswered], backgroundColor: ["#4CAF50", "#F44336", "#FFC107"] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+         });
+      });
+      
+      // Final Exam Submission.
+      document.getElementById("final-exam-form").addEventListener("submit", async (e) => {
+         e.preventDefault();
+         clearInterval(timerInterval);
+         const formData = new FormData(document.getElementById("final-exam-form"));
+         const answers = {};
+         formData.forEach((val, key) => { answers[key] = val; });
+         const res = await fetch("/submit_final_exam", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(answers)
+         });
+         const data = await res.json();
+         let feedbackHTML = `<p>Your final exam score: ${data.score} out of ${data.total}</p>`;
+         feedbackHTML += `<div class="feedback-section">
+                              <h3>Detailed Feedback & Study Recommendations</h3>
+                              ${data.feedback}
+                            </div>`;
+         if(data.details){
+            feedbackHTML += `<table border="1" cellspacing="0" cellpadding="5">
+                              <tr>
+                                <th>Question</th>
+                                <th>Your Answer</th>
+                                <th>Correct Answer</th>
+                                <th>Result</th>
+                              </tr>`;
+            data.details.forEach(item => {
+               feedbackHTML += `<tr>
+                                 <td>${item.question}</td>
+                                 <td>${item.user_answer}</td>
+                                 <td>${item.correct_answer}</td>
+                                 <td>${item.result}</td>
+                               </tr>`;
+            });
+            feedbackHTML += `</table>`;
+         }
+         feedbackHTML += `<button onclick="retakeFinalExam()">Retake Final Exam</button>`;
+         document.getElementById("final-exam-feedback").innerHTML = feedbackHTML;
+      });
+    });
+    
+    async function selectGoal() {
+      const goal = document.getElementById("goal").value.trim();
+      const res = await fetch("/select_goal", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ goal })
+      });
+      const data = await res.json();
+      document.getElementById("goal-msg").innerText = data.message;
+      document.getElementById("learning-path").innerHTML = `<div class="learning-path-result">Generating personalized path…</div>`;
+      const res2 = await fetch("/get_learning_path");
+      const pathData = await res2.json();
+      setTimeout(() => {
+         document.getElementById("learning-path").innerHTML = `<div class="learning-path-result">${pathData.learning_path}</div>
+         <button onclick="showSection('final-exam-section')">Proceed to Final Exam</button>`;
+      }, 2000);
+    }
+    
+    let timerInterval;
+    function startExamTimer() {
+      let secondsElapsed = 0;
+      const examTimer = document.getElementById("exam-timer");
+      timerInterval = setInterval(() => {
+         let hrs = Math.floor(secondsElapsed / 3600);
+         let mins = Math.floor((secondsElapsed % 3600) / 60);
+         let secs = secondsElapsed % 60;
+         let timeStr = (hrs < 10 ? "0" + hrs : hrs) + ":" +
+                       (mins < 10 ? "0" + mins : mins) + ":" +
+                       (secs < 10 ? "0" + secs : secs);
+         examTimer.textContent = "Elapsed: " + timeStr;
+         secondsElapsed++;
+      }, 1000);
+    }
+    
+    function toggleFinalExam() {
+      const examDiv = document.getElementById("final-exam-questions");
+      if(examDiv.style.display === "none" || examDiv.style.display === ""){
+         examDiv.style.display = "block";
+         loadFinalExamQuestions();
+         startExamTimer();
+         document.getElementById("toggle-final-exam-btn").innerText = "Hide Questions";
+      } else {
+         examDiv.style.display = "none";
+         clearInterval(timerInterval);
+         document.getElementById("toggle-final-exam-btn").innerText = "Show Questions";
+      }
+    }
+    
+    async function loadFinalExamQuestions() {
+      const res = await fetch("/get_final_exam");
+      const data = await res.json();
+      let container = document.getElementById("final-exam-questions");
+      container.innerHTML = "";
+      data.questions.forEach((q, i) => {
+         let questionHTML = `<div class="question-item">
+            <label><strong>${i+1}. ${q.question}</strong></label><br>`;
+         if(q.type.toLowerCase().includes("mcq") || q.type.toLowerCase().includes("multiple")){
+            let inputField = "";
+            let opts = q.options || q.choices;
+            if(Array.isArray(opts)){
+               inputField = opts.map(opt => {
+                  return `<label class="final-exam-option" data-tippy-content="Click to select">
+                            <input type="radio" name="q${i+1}" value="${opt}" style="display:none;">
+                            <span>${opt}</span>
+                          </label>`;
+               }).join("");
+            } else if(typeof opts === "object"){
+               inputField = Object.values(opts).map(opt => {
+                  return `<label class="final-exam-option" data-tippy-content="Click to select">
+                            <input type="radio" name="q${i+1}" value="${opt}" style="display:none;">
+                            <span>${opt}</span>
+                          </label>`;
+               }).join("");
+            }
+            questionHTML += inputField;
+         } else {
+            questionHTML += `<input type="text" name="q${i+1}" placeholder="Your answer" required>`;
+         }
+         questionHTML += `</div>`;
+         container.innerHTML += questionHTML;
+      });
+      Array.from(document.querySelectorAll(".final-exam-option")).forEach(option => {
+         option.addEventListener("click", function(){
+            const radio = this.querySelector("input[type='radio']");
+            if(!radio) return;
+            radio.checked = true;
+            const groupName = radio.name;
+            Array.from(document.getElementsByName(groupName)).forEach(input => {
+               input.parentElement.classList.remove("selected");
+            });
+            this.classList.add("selected");
+         });
+      });
+    }
+    
+    function retakeCapacityTest() {
+      document.getElementById("capacity-test-msg").innerHTML = "";
+      document.getElementById("capacity-test-form").reset();
+      document.getElementById("start-capacity-btn").style.display = "block";
+      document.getElementById("capacity-test-form").style.display = "none";
+      loadCapacityTestQuestions();
+    }
+    
+    function retakeFinalExam() {
+      document.getElementById("final-exam-feedback").innerHTML = "";
+      document.getElementById("final-exam-form").reset();
+      document.getElementById("final-exam-questions").innerHTML = "";
+      loadFinalExamQuestions();
+    }
+    
+    async function sendChat() {
+      const inputField = document.getElementById("chat-input");
+      const msg = inputField.value.trim();
+      if(!msg) return;
+      document.getElementById("chat-box").innerHTML += `<div class="chat-message user-message">You: ${msg}</div>`;
+      inputField.value = "";
+      const res = await fetch("/ask", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ message: msg })
+      });
+      const data = await res.json();
+      document.getElementById("chat-box").innerHTML += `<div class="chat-message bot-message">Bot: ${data.reply}</div>`;
+      document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
+    }
+    
+    let recognizing = false;
+    let recognition;
+    if('webkitSpeechRecognition' in window) {
+      recognition = new webkitSpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      recognition.onstart = function() {
+         document.getElementById("chat-status").innerText = "Voice recognition activated...";
+      };
+      recognition.onerror = function(event) { console.error(event.error); };
+      recognition.onend = function() {
+         document.getElementById("chat-status").innerText = "";
+         recognizing = false;
+      };
+      recognition.onresult = function(event) {
+         const transcript = event.results[0][0].transcript;
+         document.getElementById("chat-input").value = transcript;
+      };
+    }
+    function toggleVoice() {
+      if(!recognition){
+         alert("Voice recognition not supported in this browser.");
+         return;
+      }
+      if(recognizing){
+         recognition.stop();
+         recognizing = false;
+      } else {
+         recognition.start();
+         recognizing = true;
+      }
+    }
+    
+    async function loadHistory() {
+      const res = await fetch("/get_history");
+      const data = await res.json();
+      document.getElementById("history-container").innerHTML = data.history;
+      showSection("history-section");
+    }
+    
+    async function loadLeaderboard() {
+      const res = await fetch("/get_leaderboard");
+      const data = await res.json();
+      document.getElementById("leaderboard-content").innerHTML = data.leaderboard;
+      showSection("leaderboard-section");
+    }
+    
+    async function loadDashboard() {
+      const res = await fetch("/get_dashboard");
+      const data = await res.json();
+      document.getElementById("dashboard-content").innerHTML = data.dashboard;
+      const ctx = document.getElementById("dashboardChart").getContext("2d");
+      new Chart(ctx, {
+         type: "bar",
+         data: {
+            labels: ["Quiz 1", "Quiz 2", "Quiz 3", "Final Exam"],
+            datasets: [{
+               label: "Score",
+               data: [70, 80, 65, 75],
+               backgroundColor: "#4CAF50"
+            }]
+         },
+         options: { responsive: true, maintainAspectRatio: false }
+      });
+      showSection("dashboard-section");
+    }
+    
+    async function saveNote() {
+      const note = document.getElementById("note-input").value.trim();
+      if(!note){
+         alert("Please enter a note.");
+         return;
+      }
+      const formData = new FormData();
+      formData.append("note", note);
+      const fileInput = document.getElementById("note-file");
+      if(fileInput && fileInput.files.length > 0){
+         formData.append("file", fileInput.files[0]);
+      }
+      const res = await fetch("/save_note", {
+         method: "POST",
+         body: formData
+      });
+      const data = await res.json();
+      alert(data.message);
+      loadNotes();
+    }
+    
+    async function loadNotes() {
+      const res = await fetch("/get_notes");
+      const data = await res.json();
+      document.getElementById("notes-output").innerHTML = data.notes;
+    }
+  </script>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <img src="{{ url_for('static', filename='robot.gif') }}" alt="Loading...">
+  </div>
+  
+  <!-- Header with Home Icon, Profile Button, and Navigation -->
+  <header>
+    <!-- Home Icon (top-left) -->
+    <div id="home-icon" onclick="showSection('dashboard-section')">
+      <img src="{{ url_for('static', filename='home_icon.png') }}" alt="Home" class="home-img">
+    </div>
+    <h1>Personalized Tutor Bot</h1>
+    <!-- Profile Button (icon with overlay label) -->
+    <div id="profile-dropdown">
+      <div class="profile-btn" onclick="document.getElementById('profile-menu').classList.toggle('active')">
+        <img id="profile-avatar" src="{{ url_for('static', filename='avatar.png') }}" alt="Profile Avatar">
+        <span class="profile-label">Profile</span>
+      </div>
+      <div id="profile-menu">
+        <a href="#" onclick="showSection('profile-section')">Profile</a>
+        <a href="#" onclick="showSection('dashboard-section')">Dashboard</a>
+        <a href="#" onclick="loadHistory()">History</a>
+        <a href="#" onclick="logout()" id="logout-link">Logout</a>
+      </div>
+    </div>
+    <nav>
+      <a href="#" onclick="showSection('capacity-test-section')">Capacity Test</a>
+      <a href="#" onclick="showSection('goal-section')">Goal Selection</a>
+      <a href="#" onclick="showSection('final-exam-section')">Final Exam</a>
+      <a href="#" onclick="showSection('chat-section')">Chat Bot</a>
+      <a href="#" onclick="showSection('notes-section')">Notes</a>
+    </nav>
+  </header>
+  
+  <!-- Dashboard / Home Page -->
+  <div id="dashboard-section" class="section active">
+    <h2>Welcome to Personalized Tutor Bot</h2>
+    <p>This website is designed to help you assess your learning capacity and chart your career journey with interactive tools and personalized study plans. Please sign up and log in to access all features.</p>
+    <ul>
+      <li>Learning Capacity Test</li>
+      <li>Goal Selection &amp; Personal Learning Path</li>
+      <li>Final Exam with Detailed Feedback</li>
+      <li>Interactive Chat Bot</li>
+      <li>Personal Notes &amp; File Uploads</li>
+    </ul>
+    <p>Navigate using the menu above or via the profile dropdown.</p>
+    <div id="dashboard-content"></div>
+    <canvas id="dashboardChart" style="max-width: 100%; height: 300px;"></canvas>
+    <!-- Example Progress Bar on Left Center -->
+    <div id="progress-bar">
+      <div id="progress-fill"></div>
+    </div>
+  </div>
+  
+  <!-- Login Section -->
+  <div id="login-section" class="section">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Enter your username">
+    <div class="form-group">
+      <input type="password" id="password" placeholder="Enter your password">
+      <span id="togglePassIcon" class="toggle-icon" onclick="togglePassword()">👁️</span>
+    </div>
+    <button onclick="login()">Login</button>
+    <p id="login-msg"></p>
+    <button onclick="showSection('signup-section')" class="secondary-button">Sign Up</button>
+  </div>
+  
+  <!-- Signup Section -->
+  <div id="signup-section" class="section">
+    <h2>Sign Up</h2>
+    <input type="text" id="signup-username" placeholder="Choose a username" required>
+    <div class="form-group">
+      <input type="password" id="signup-password" placeholder="Choose a password" required>
+      <span id="signup-togglePassIcon" class="toggle-icon" onclick="togglePassword()">👁️</span>
+    </div>
+    <button onclick="signupUser()">Sign Up</button>
+    <p id="signup-msg"></p>
+    <p class="small-note">Already have an account? Click Login above.</p>
+  </div>
+  
+  <!-- Profile & Personalization Section -->
+  <div id="profile-section" class="section">
+    <h2>Profile &amp; Personalization</h2>
+    <p>Please tell us about yourself:</p>
+    <label for="profile-type">I am a:</label>
+    <select id="profile-type" onchange="if(this.value==='other'){document.getElementById('other-input').style.display='block'; document.getElementById('student-options').style.display='none'; document.getElementById('professional-input').style.display='none';} else if(this.value==='professional'){document.getElementById('professional-input').style.display='block'; document.getElementById('student-options').style.display='none'; document.getElementById('other-input').style.display='none';} else {document.getElementById('student-options').style.display='block'; document.getElementById('professional-input').style.display='none'; document.getElementById('other-input').style.display='none';}">
+      <option value="student" selected>Student</option>
+      <option value="professional">Working Professional</option>
+      <option value="other">Other</option>
+    </select>
+    <!-- Student Options -->
+    <div id="student-options">
+      <label for="profile-level-select">Select your level:</label>
+      <select id="profile-level-select" onchange="if(this.value==='school'){document.getElementById('grade-input').style.display='block'; document.getElementById('college-stream').style.display='none'; document.getElementById('degree-input').style.display='none';} else if(this.value==='college'){document.getElementById('grade-input').style.display='none'; document.getElementById('college-stream').style.display='block'; document.getElementById('degree-input').style.display='none';} else if(this.value==='graduated'){document.getElementById('grade-input').style.display='none'; document.getElementById('college-stream').style.display='none'; document.getElementById('degree-input').style.display='block';} else {document.getElementById('grade-input').style.display='none'; document.getElementById('college-stream').style.display='none'; document.getElementById('degree-input').style.display='none';}">
+         <option value="school">School</option>
+         <option value="college">College</option>
+         <option value="graduated">Graduated</option>
+      </select>
+      <div id="grade-input" style="display: none;">
+         <label for="profile-grade">Your Grade:</label>
+         <input type="text" id="profile-grade" placeholder="e.g., 10th">
+      </div>
+      <div id="college-stream" style="display: none;">
+         <label for="profile-stream">Your Stream:</label>
+         <select id="profile-stream">
+            <option value="engineering">Engineering</option>
+            <option value="business">Business</option>
+            <option value="arts">Arts</option>
+            <option value="science">Science</option>
+            <option value="medicine">Medicine</option>
+            <option value="law">Law</option>
+            <option value="architecture">Architecture</option>
+            <option value="computer-science">Computer Science</option>
+            <option value="psychology">Psychology</option>
+            <option value="economics">Economics</option>
+            <option value="education">Education</option>
+            <option value="design">Design</option>
+            <option value="social-science">Social Science</option>
+            <option value="pharmacy">Pharmacy</option>
+            <option value="nursing">Nursing</option>
+            <option value="accounting">Accounting</option>
+            <option value="marketing">Marketing</option>
+            <option value="tourism">Tourism</option>
+            <option value="journalism">Journalism</option>
+            <option value="others">Others</option>
+         </select>
+      </div>
+      <div id="degree-input" style="display: none;">
+         <label for="profile-degree">Your Degree:</label>
+         <input type="text" id="profile-degree" placeholder="e.g., B.Tech in Computer Science">
+      </div>
+    </div>
+    
+    <!-- Professional Options -->
+    <div id="professional-input" style="display: none;">
+      <label for="profile-field">Your Field of Work:</label>
+      <input type="text" id="profile-field" placeholder="e.g., IT, Finance, etc.">
+    </div>
+    
+    <!-- Other Options -->
+    <div id="other-input" style="display: none;">
+      <label for="profile-other">Please specify:</label>
+      <input type="text" id="profile-other" placeholder="Enter your details here">
+    </div>
+    <button onclick="updateProfile()">Save Profile</button>
+    <div id="profile-info"></div>
+  </div>
+  
+  <!-- Capacity Test Section -->
+  <div id="capacity-test-section" class="section">
+    <h2>Learning Capacity Test</h2>
+    <button id="start-capacity-btn" onclick="startCapacityTest()">Start Quiz</button>
+    <form id="capacity-test-form" style="display: none; overflow-y: auto; max-height: 100vh;">
+      <div id="capacity-test-questions"></div>
+      <button type="submit">Submit Test</button>
+    </form>
+    <div id="capacity-test-msg"></div>
+    <!-- Centered Pie Chart -->
+    <div id="chartContainer">
+      <canvas id="capacityChart" width="300" height="300"></canvas>
+    </div>
+  </div>
+  
+  <!-- Goal Selection Section -->
+  <div id="goal-section" class="section">
+    <h2>Goal Selection</h2>
+    <input type="text" id="goal" placeholder="Enter your career goal (e.g., doctor, engineer)">
+    <button onclick="selectGoal()">Set Goal</button>
+    <p id="goal-msg"></p>
+    <div id="learning-path"></div>
+  </div>
+  
+  <!-- Final Exam Section -->
+  <div id="final-exam-section" class="section">
+    <h2>Final Exam</h2>
+    <button id="toggle-final-exam-btn" onclick="toggleFinalExam()">Show Questions</button>
+    <span id="exam-timer"></span>
+    <form id="final-exam-form">
+      <div id="final-exam-questions" style="display: none; overflow-y: auto; max-height: 100vh;"></div>
+      <button type="submit">Submit Final Exam</button>
+    </form>
+    <div id="final-exam-feedback"></div>
+  </div>
+  
+  <!-- Chat Bot Section -->
+  <div id="chat-section" class="section">
+    <h2>Chat Bot</h2>
+    <div class="bot-panel">
+      <div class="chat-box" id="chat-box"></div>
+      <div class="chat-input-group">
+        <textarea id="chat-input" class="chat-input" placeholder="Type your message..." rows="1"></textarea>
+        <button class="chat-send-btn" onclick="sendChat()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#fff" viewBox="0 0 24 24">
+            <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
+          </svg>
+        </button>
+        <button class="chat-mic-btn" onclick="toggleVoice()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#fff" viewBox="0 0 24 24">
+            <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 14 0z"/>
+          </svg>
+        </button>
+      </div>
+      <p id="chat-status" class="small-note"></p>
+    </div>
+  </div>
+  
+  <!-- History Section -->
+  <div id="history-section" class="section">
+    <h2>History</h2>
+    <div id="history-container"></div>
+  </div>
+  
+  <!-- Leaderboard Section -->
+  <div id="leaderboard-section" class="section">
+    <h2>Live Leaderboard</h2>
+    <div id="leaderboard-content">
+      <p>User: {% if session.get("username") %}{{ session.get("username") }}{% else %}Anonymous{% endif %}</p>
+      <p>Your Score: <strong>{% if session.get("capacity_test_score") %}{{ session.get("capacity_test_score") }}{% else %}0{% endif %}</strong></p>
+      <p>No additional leaderboard data available.</p>
+    </div>
+  </div>
+  
+  <!-- Personal Notes Section -->
+  <div id="notes-section" class="section">
+    <h2>Personal Notes</h2>
+    <textarea id="note-input" placeholder="Type your note here..."></textarea>
+    <input type="file" id="note-file" accept="image/*,audio/*,video/*">
+    <button onclick="saveNote()">Save Note</button>
+    <div id="notes-output">
+      <p>Your saved notes will appear here.</p>
+    </div>
+  </div>
+  
+  <!-- Tutor Bot Image (clickable to open Chat Bot) -->
+  <img id="tutor-bot" src="{{ url_for('static', filename='tutor_bot.png') }}" alt="Tutor Bot" onclick="showSection('chat-section')">
+</body>
+</html>
